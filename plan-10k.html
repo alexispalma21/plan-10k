@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plan 10K — Fuerza + Carrera</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0e0e12; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { opacity: 1; }
+input, textarea, button { font-family: inherit; }
+::-webkit-scrollbar { width: 4px; } 
+::-webkit-scrollbar-track { background: #1a1a24; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+
+const PHASES = [
+  { id: 1, name: "Readaptación", weeks: [1, 2, 3], color: "#4ECDC4", desc: "Volver a mover bien. Cargas moderadas (~60-65%). Técnica perfecta. Base aeróbica." },
+  { id: 2, name: "Construcción", weeks: [4, 5, 6, 7, 8], color: "#F7B731", desc: "Sobrecarga progresiva en fuerza. Volumen de carrera aumenta semana a semana." },
+  { id: 3, name: "Especificidad 10K", weeks: [9, 10, 11], color: "#FC5C65", desc: "Simular ritmo de carrera. Fuerza de mantenimiento. Máxima confianza." },
+  { id: 4, name: "Tapering", weeks: [12], color: "#A29BFE", desc: "Bajar volumen 40%. Llegar fresco y recuperado al 5 de julio." }
+];
+
+const SPEED_LEGEND = [
+  { label: "Caminata", speed: "5.5–6.0 km/h", color: "#888", desc: "Recuperación entre intervalos" },
+  { label: "Trote fácil", speed: "8.0–8.5 km/h", color: "#4ECDC4", desc: "Puedes hablar. Sesiones largas." },
+  { label: "Tempo / Objetivo", speed: "9.5–10.0 km/h", color: "#F7B731", desc: "Incómodo pero sostenible. Tu ritmo meta 10K." },
+  { label: "Intervalos", speed: "10.0–10.5 km/h", color: "#FC5C65", desc: "Exigente. Solo en ráfagas cortas." },
+];
+
+const WEEK_PLANS = {
+  1: {
+    lunes: { tipo: "💪 Push", ejercicios: ["Press banca plano 3×12", "Press mancuernas inclinado 3×12", "Press militar sentado 3×12", "Elevaciones laterales 3×15", "Tricep pushdown 3×15", "Dead bug 3×10/lado"], nota: "Cargas ligeras. Enfócate en la conexión mente-músculo." },
+    martes: { tipo: "🏃 Carrera — Trote Fácil", ejercicios: ["5 min caminata → 5.5 km/h", "20 min trote continuo → 8.0 km/h", "5 min caminata → 5.5 km/h"], nota: "8.0 km/h = ritmo donde puedes hablar con alguien sin ahogarte. Si se siente muy fácil, está bien — es intencional esta semana.", cardioDetail: { tipo: "Trote fácil", duracion: "20 min continuos", velocidad: "8.0 km/h", inclinacion: "1.0%" } },
+    miercoles: { tipo: "💪 Pull + Core", ejercicios: ["Jalón al pecho 3×12", "Remo en polea sentado 3×12", "Curl bíceps 3×12", "Face pulls 3×15", "Plank frontal 3×30s", "Pallof press 3×10/lado"], nota: "Core siempre activado antes de jalar. Espalda recta en remos." },
+    jueves: { tipo: "🏃 Carrera — Trote Fácil", ejercicios: ["5 min caminata → 5.5 km/h", "10 min trote → 8.0 km/h", "3 min caminata → 5.5 km/h", "10 min trote → 8.0 km/h", "5 min caminata → 5.5 km/h"], nota: "Dos bloques de 10 min. La caminata del medio es descanso real, no te apures.", cardioDetail: { tipo: "Trote fácil partido", duracion: "2 × 10 min", velocidad: "8.0 km/h", inclinacion: "1.0%" } },
+    viernes: { tipo: "💪 Legs", ejercicios: ["Prensa de pierna 3×12", "Extensión cuádriceps 3×15", "Curl femoral tumbado 3×15", "Hip thrust 3×12", "Sentadilla goblet 3×12", "Gemelos de pie 3×20"], nota: "Sin back squat. Hip thrust es prioridad para glúteo." }
+  },
+  2: {
+    lunes: { tipo: "💪 Push", ejercicios: ["Press banca plano 3×12 (+2kg)", "Press mancuernas inclinado 3×12", "Press militar sentado 3×12", "Elevaciones laterales 3×15", "Tricep pushdown 3×15", "Dead bug 3×10/lado"], nota: "Sube 2–2.5 kg en press banca si la semana 1 se sintió cómoda." },
+    martes: { tipo: "🏃 Carrera — Trote Fácil", ejercicios: ["5 min caminata → 5.5 km/h", "25 min trote continuo → 8.0 km/h", "5 min caminata → 5.5 km/h"], nota: "5 minutos más que la semana pasada. Si a los 20 min te sientes bien, sube a 8.5 km/h los últimos 5.", cardioDetail: { tipo: "Trote fácil", duracion: "25 min continuos", velocidad: "8.0–8.5 km/h", inclinacion: "1.0%" } },
+    miercoles: { tipo: "💪 Pull + Core", ejercicios: ["Jalón al pecho 3×12", "Remo en polea sentado 3×12", "Curl bíceps 3×12", "Face pulls 3×15", "Plank frontal 3×35s", "Pallof press 3×12/lado"], nota: "Sube ligeramente en jalón y remo si la técnica fue sólida." },
+    jueves: { tipo: "🏃 Carrera — Trote Fácil", ejercicios: ["5 min caminata → 5.5 km/h", "20 min trote continuo → 8.0 km/h", "5 min caminata → 5.5 km/h"], nota: "Segunda carrera de la semana, más corta. Mantén el ritmo suave.", cardioDetail: { tipo: "Trote fácil", duracion: "20 min continuos", velocidad: "8.0 km/h", inclinacion: "1.0%" } },
+    viernes: { tipo: "💪 Legs", ejercicios: ["Prensa de pierna 3×12 (+5kg)", "Extensión cuádriceps 3×15", "Curl femoral tumbado 3×15", "Hip thrust 3×12 (+5kg)", "Sentadilla goblet 3×12", "Gemelos de pie 3×20"], nota: "Sube carga en prensa e hip thrust." }
+  },
+  3: {
+    lunes: { tipo: "💪 Push", ejercicios: ["Press banca plano 4×10", "Press mancuernas inclinado 3×10", "Press militar sentado 3×10", "Elevaciones laterales 3×15", "Tricep pushdown 3×12", "Dead bug 3×10/lado"], nota: "Subimos a 4 series en press banca. Cierra la fase 1 con buena técnica." },
+    martes: { tipo: "🏃 Carrera — Trote Fácil", ejercicios: ["5 min caminata → 5.5 km/h", "30 min trote continuo → 8.5 km/h", "5 min caminata → 5.5 km/h"], nota: "30 minutos continuos a 8.5 km/h. Si lo logras cómodo, la fase 1 fue exitosa. Equivale a ~4.25 km.", cardioDetail: { tipo: "Trote fácil", duracion: "30 min continuos", velocidad: "8.5 km/h", inclinacion: "1.0%" } },
+    miercoles: { tipo: "💪 Pull + Core", ejercicios: ["Jalón al pecho 4×10", "Remo en polea sentado 3×10", "Curl bíceps 3×12", "Face pulls 3×15", "Plank frontal 3×40s", "Pallof press 3×12/lado"], nota: "4 series en jalón. Baja lento en el excéntrico (2-3 segundos)." },
+    jueves: { tipo: "🏃 Carrera — Primer Intervalo", ejercicios: ["5 min caminata → 5.5 km/h", "4 × [3 min a 10.0 km/h + 2 min caminata a 5.5 km/h]", "5 min caminata → 5.5 km/h"], nota: "Tu primer intervalo real. 10.0 km/h se va a sentir exigente — es normal. Los 2 min de caminata entre cada uno son recuperación real, no los aceleres.", cardioDetail: { tipo: "Intervalos", series: "4 series", velocidadRapido: "10.0 km/h", velocidadRecup: "5.5 km/h", tiempoRapido: "3 min", tiempoRecup: "2 min", inclinacion: "1.0%" } },
+    viernes: { tipo: "💪 Legs", ejercicios: ["Prensa de pierna 4×10", "Extensión cuádriceps 3×12", "Curl femoral tumbado 3×12", "Hip thrust 4×10", "Sentadilla goblet 3×10", "Gemelos de pie 3×20"], nota: "4 series en prensa e hip thrust. Cierre sólido de la semana." }
+  },
+  4: {
+    lunes: { tipo: "💪 Push", ejercicios: ["Press banca plano 4×10", "Press mancuernas inclinado 4×10", "Press militar sentado 3×10", "Elevaciones laterales 4×12", "Fondos en máquina 3×12", "Dead bug 3×12/lado"], nota: "Inicio fase 2. Más volumen. Busca cargas que desafíen en las últimas 2–3 reps." },
+    martes: { tipo: "🏃 Carrera — Rodaje Largo", ejercicios: ["5 min caminata → 5.5 km/h", "35 min trote continuo → 8.5 km/h", "5 min caminata → 5.5 km/h"], nota: "35 minutos a 8.5 km/h = ~5 km. El rodaje largo es tu base aeróbica. Ritmo cómodo siempre.", cardioDetail: { tipo: "Rodaje largo", duracion: "35 min continuos", velocidad: "8.5 km/h", inclinacion: "1.0%" } },
+    miercoles: { tipo: "💪 Pull + Core", ejercicios: ["Jalón al pecho 4×10", "Remo en polea sentado 4×10", "Curl bíceps 3×12", "Face pulls 3×15", "Plank frontal 4×40s", "Pallof press 3×12/lado", "Bird-dog 3×10/lado"], nota: "Agregamos bird-dog. Excelente para estabilidad lumbar." },
+    jueves: { tipo: "🏃 Carrera — Intervalos", ejercicios: ["5 min caminata → 5.5 km/h", "5 × [4 min a 10.0 km/h + 90s caminata a 5.5 km/h]", "5 min caminata → 5.5 km/h"], nota: "Una serie más que la semana 3, y 1 min más cada intervalo. Total ~27 min de trabajo. El 90s de caminata parece poco — respira profundo en ese tiempo.", cardioDetail: { tipo: "Intervalos", series: "5 series", velocidadRapido: "10.0 km/h", velocidadRecup: "5.5 km/h", tiempoRapido: "4 min", tiempoRecup: "90 seg", inclinacion: "1.0%" } },
+    viernes: { tipo: "💪 Legs", ejercicios: ["Prensa de pierna 4×10", "Extensión cuádriceps 4×12", "Curl femoral tumbado 4×12", "Hip thrust 4×10", "Sentadilla goblet 4×10", "Gemelos sentado 3×20"], nota: "Agregamos gemelo sentado (sóleo). Carga progresiva en todo." }
+  },
+  5: {
+    lunes: { tipo: "💪 Push", ejercicios: ["Press banca plano 4×8 (+carga)", "Press mancuernas inclinado 4×10", "Press militar sentado 4×10", "Elevaciones laterales 4×12", "Fondos en máquina 3×12", "Dead bug 3×12/lado"], nota: "Bajamos reps en press banca para subir carga. Aquí empieza la progresión real de fuerza." },
+    martes: { tipo: "🏃 Carrera — Rodaje Largo", ejercicios: ["5 min caminata → 5.5 km/h", "40 min trote continuo → 8.5 km/h", "5 min caminata → 5.5 km/h"], nota: "40 minutos = ~5.7 km. Ya estás en territorio de media carrera. Si los últimos 10 min se sienten bien, sube a 9.0 km/h.", cardioDetail: { tipo: "Rodaje largo", duracion: "40 min continuos", velocidad: "8.5–9.0 km/h", inclinacion: "1.0%" } },
+    miercoles: { tipo: "💪 Pull + Core", ejercicios: ["Jalón al pecho 4×8 (+carga)", "Remo en polea sentado 4×10", "Curl mancuernas alterno 3×12", "Face pulls 3×15", "Plank frontal 4×45s", "Pallof press 4×12/lado", "Bird-dog 3×12/lado"], nota: "Baja a 8 reps en jalón para subir carga." },
+    jueves: { tipo: "🏃 Carrera — Intervalos", ejercicios: ["5 min caminata → 5.5 km/h", "5 × [5 min a 10.0 km/h + 90s caminata a 5.5 km/h]", "5 min caminata → 5.5 km/h"], nota: "Mismas 5 series pero 5 min cada una. Total ~32 min de trabajo real. Vas a sentir las piernas al final — eso es la adaptación.", cardioDetail: { tipo: "Intervalos", series: "5 series", velocidadRapido: "10.0 km/h", velocidadRecup: "5.5 km/h", tiempoRapido: "5 min", tiempoRecup: "90 seg", inclinacion: "1.0%" } },
+    viernes: { tipo: "💪 Legs", ejercicios: ["Prensa de pierna 4×8 (+carga)", "Extensión cuádriceps 4×12", "Curl femoral tumbado 4×12", "Hip thrust 4×8 (+carga)", "Sentadilla goblet 4×10", "Gemelos sentado 3×20"], nota: "Subida de carga en prensa e hip thrust. El 8RM debe ser desafiante." }
+  },
+  6: {
+    lunes: { tipo: "💪 Push", ejercicios: ["Press banca plano 4×8", "Press mancuernas inclinado 4×8", "Press militar sentado 4×8", "Elevaciones laterales 4×12", "Fondos en máquina 4×12", "Dead bug 3×12/lado"], nota: "Semana de carga máxima en fase 2. Todo a 8 reps con carga alta." },
+    martes: { tipo: "🏃 Carrera — Rodaje Largo", ejercicios: ["5 min caminata → 5.5 km/h", "45 min trote continuo → 9.0 km/h", "5 min caminata → 5.5 km/h"], nota: "45 min a 9.0 km/h = ~6.75 km. Ya estás corriendo más de 2/3 del 10K. Este es un hito importante.", cardioDetail: { tipo: "Rodaje largo", duracion: "45 min continuos", velocidad: "9.0 km/h", inclinacion: "1.0%" } },
+    miercoles: { tipo: "💪 Pull + Core", ejercicios: ["Jalón al pecho 4×8", "Remo en polea sentado 4×8", "Curl mancuernas 3×12", "Face pulls 4×15", "Plank frontal 4×50s", "Pallof press 4×12/lado", "Bird-dog 3×12/lado"], nota: "Remo a 8 reps con carga real. Espalda neutral siempre." },
+    jueves: { tipo: "🏃 Carrera — Primer Tempo Run ⭐", ejercicios: ["5 min caminata → 5.5 km/h", "3 min trote suave → 8.5 km/h (calentamiento)", "20 min tempo continuo → 9.5 km/h", "3 min trote suave → 8.5 km/h (enfriamiento)", "5 min caminata → 5.5 km/h"], nota: "Tu primer tempo run. 9.5 km/h durante 20 min continuos = incómodo pero aguantable. No deberías poder hablar, pero tampoco es sprint. Si no puedes mantener 9.5, baja a 9.2 — no pasa nada.", cardioDetail: { tipo: "Tempo Run ⭐", duracion: "20 min continuos", velocidad: "9.5 km/h", calentamiento: "8.5 km/h × 3 min", inclinacion: "1.0%" } },
+    viernes: { tipo: "💪 Legs", ejercicios: ["Prensa de pierna 4×8", "Extensión cuádriceps 4×10", "Curl femoral tumbado 4×10", "Hip thrust 4×8", "Sentadilla goblet 4×8", "Gemelos sentado 4×15"], nota: "Cierre de semana intenso. Duerme bien este fin de semana." }
+  },
+  7: {
+    lunes: { tipo: "💪 Push — Deload ⚡", ejercicios: ["Press banca plano 3×10 (−20% carga)", "Press mancuernas inclinado 3×10", "Press militar sentado 3×10", "Elevaciones laterales 3×12", "Tricep pushdown 3×15"], nota: "⚡ SEMANA DE DELOAD. Baja carga 20%. El cuerpo consolida adaptaciones — es parte del plan, no un retroceso." },
+    martes: { tipo: "🏃 Carrera — Regenerativa ⚡", ejercicios: ["5 min caminata → 5.5 km/h", "25 min trote muy suave → 7.5 km/h", "5 min caminata → 5.5 km/h"], nota: "7.5 km/h — más lento de lo normal, a propósito. Esta semana el cuerpo descansa y se repara. No te sientas culpable.", cardioDetail: { tipo: "Regenerativa", duracion: "25 min", velocidad: "7.5 km/h", inclinacion: "0%" } },
+    miercoles: { tipo: "💪 Pull + Core — Deload ⚡", ejercicios: ["Jalón al pecho 3×10 (−20% carga)", "Remo en polea 3×10", "Curl bíceps 3×12", "Plank 3×40s", "Bird-dog 3×10/lado"], nota: "Misma estructura, menos intensidad." },
+    jueves: { tipo: "🏃 Carrera — Regenerativa ⚡", ejercicios: ["5 min caminata → 5.5 km/h", "20 min trote suave → 7.5 km/h", "5 min caminata → 5.5 km/h"], nota: "Semana de recuperación activa. Mueve las piernas, nada más.", cardioDetail: { tipo: "Regenerativa", duracion: "20 min", velocidad: "7.5 km/h", inclinacion: "0%" } },
+    viernes: { tipo: "💪 Legs — Deload ⚡", ejercicios: ["Prensa de pierna 3×10 (−20% carga)", "Curl femoral 3×12", "Hip thrust 3×10", "Gemelos 3×15"], nota: "Cierre de deload. El lunes regresarás más fuerte." }
+  },
+  8: {
+    lunes: { tipo: "💪 Push", ejercicios: ["Press banca plano 4×8 (supera sem. 6)", "Press mancuernas inclinado 4×8", "Press militar sentado 4×8", "Elevaciones laterales 4×12", "Fondos máquina 4×10", "Dead bug 3×12/lado"], nota: "Post-deload. Deberías sentirte más fuerte que en semana 6. Busca nuevo máximo." },
+    martes: { tipo: "🏃 Carrera — Rodaje Largo", ejercicios: ["5 min caminata → 5.5 km/h", "50 min trote continuo → 9.0 km/h", "5 min caminata → 5.5 km/h"], nota: "50 min a 9.0 km/h = ~7.5 km. Casi el 10K completo a ritmo fácil. Si llegas bien a los 40 min, sube a 9.5 los últimos 10.", cardioDetail: { tipo: "Rodaje largo", duracion: "50 min continuos", velocidad: "9.0–9.5 km/h", inclinacion: "1.0%" } },
+    miercoles: { tipo: "💪 Pull + Core", ejercicios: ["Jalón al pecho 4×8", "Remo en polea 4×8", "Curl mancuernas 4×10", "Face pulls 4×15", "Plank 4×55s", "Pallof press 4×12/lado", "Bird-dog 4×12/lado"], nota: "Máximo volumen de la fase 2." },
+    jueves: { tipo: "🏃 Carrera — Intervalos", ejercicios: ["5 min caminata → 5.5 km/h", "6 × [5 min a 10.5 km/h + 90s caminata a 5.5 km/h]", "5 min caminata → 5.5 km/h"], nota: "Subimos a 10.5 km/h y son 6 series — el máximo del plan. Si 10.5 se siente imposible, mantén 10.0 — lo importante es completar las 6 series.", cardioDetail: { tipo: "Intervalos", series: "6 series", velocidadRapido: "10.5 km/h", velocidadRecup: "5.5 km/h", tiempoRapido: "5 min", tiempoRecup: "90 seg", inclinacion: "1.0%" } },
+    viernes: { tipo: "💪 Legs", ejercicios: ["Prensa de pierna 4×8", "Extensión cuádriceps 4×10", "Curl femoral 4×10", "Hip thrust 4×8", "Sentadilla goblet 4×8", "Gemelos sentado 4×15"], nota: "Cierre de fase 2. Anota todas las cargas para referencia." }
+  },
+  9: {
+    lunes: { tipo: "💪 Push — Mantenimiento", ejercicios: ["Press banca plano 3×8", "Press mancuernas inclinado 3×8", "Press militar sentado 3×8", "Elevaciones laterales 3×12", "Tricep pushdown 3×12"], nota: "Inicio fase 3. Mismas cargas, menos volumen. El músculo se mantiene con menos series." },
+    martes: { tipo: "🏃 Carrera — Rodaje Largo", ejercicios: ["5 min caminata → 5.5 km/h", "55 min trote continuo → 9.0 km/h", "5 min caminata → 5.5 km/h"], nota: "55 min a 9.0 km/h = ~8.25 km. Si lo completas cómodo, el sub-60 ya está al alcance. Los últimos 10 min: si puedes, sube a 9.5.", cardioDetail: { tipo: "Rodaje largo", duracion: "55 min continuos", velocidad: "9.0–9.5 km/h", inclinacion: "1.0%" } },
+    miercoles: { tipo: "💪 Pull + Core", ejercicios: ["Jalón al pecho 3×8", "Remo en polea 3×8", "Curl mancuernas 3×10", "Face pulls 3×15", "Plank 4×55s", "Bird-dog 3×12/lado"], nota: "Menos series, misma carga. Eficiencia sobre volumen." },
+    jueves: { tipo: "🏃 Carrera — Tempo Run ⭐", ejercicios: ["5 min caminata → 5.5 km/h", "3 min trote suave → 8.5 km/h", "25 min tempo continuo → 9.5–10.0 km/h", "3 min trote suave → 8.5 km/h", "5 min caminata → 5.5 km/h"], nota: "25 min de tempo. Empieza en 9.5 los primeros 15 min, sube a 10.0 si puedes los últimos 10. Este es el entreno más importante para el sub-60.", cardioDetail: { tipo: "Tempo Run ⭐", duracion: "25 min continuos", velocidad: "9.5→10.0 km/h", calentamiento: "8.5 km/h × 3 min", inclinacion: "1.0%" } },
+    viernes: { tipo: "💪 Legs", ejercicios: ["Prensa de pierna 3×8", "Curl femoral 3×10", "Hip thrust 3×8", "Sentadilla goblet 3×10", "Gemelos 3×15"], nota: "Menos volumen. Las piernas necesitan estar frescas para el rodaje largo." }
+  },
+  10: {
+    lunes: { tipo: "💪 Push", ejercicios: ["Press banca plano 3×8", "Press mancuernas inclinado 3×8", "Press militar sentado 3×8", "Elevaciones laterales 3×12", "Tricep pushdown 3×12"], nota: "Semana 10. Mantén cargas, no busques PR. El objetivo está en la cinta." },
+    martes: { tipo: "🏃 Carrera — Rodaje MÁXIMO", ejercicios: ["5 min caminata → 5.5 km/h", "60 min trote continuo → 9.5 km/h", "5 min caminata → 5.5 km/h"], nota: "60 min a 9.5 km/h = ~9.5 km. Tu carrera más larga del plan. Casi la distancia real del 10K. Si llegas aquí bien, el 5 de julio ya es tuyo.", cardioDetail: { tipo: "Rodaje largo — MÁXIMO", duracion: "60 min continuos", velocidad: "9.5 km/h", inclinacion: "1.0%" } },
+    miercoles: { tipo: "💪 Pull + Core", ejercicios: ["Jalón al pecho 3×8", "Remo en polea 3×8", "Curl mancuernas 3×10", "Face pulls 3×15", "Plank 3×55s", "Bird-dog 3×12/lado"], nota: "Técnica perfecta. Nada nuevo." },
+    jueves: { tipo: "🏃 Carrera — Tempo Run ⭐", ejercicios: ["5 min caminata → 5.5 km/h", "3 min trote suave → 8.5 km/h", "25 min tempo continuo → 10.0 km/h", "3 min trote suave → 8.5 km/h", "5 min caminata → 5.5 km/h"], nota: "25 min a exactamente 10.0 km/h. Esta es la velocidad que necesitas el 5 de julio. Si lo sostienes aquí, lo sostienes en la carrera.", cardioDetail: { tipo: "Tempo Run ⭐", duracion: "25 min continuos", velocidad: "10.0 km/h", calentamiento: "8.5 km/h × 3 min", inclinacion: "1.0%" } },
+    viernes: { tipo: "💪 Legs", ejercicios: ["Prensa de pierna 3×8", "Curl femoral 3×10", "Hip thrust 3×8", "Sentadilla goblet 3×10", "Gemelos 3×15"], nota: "Piernas frescas para el fin de semana." }
+  },
+  11: {
+    lunes: { tipo: "💪 Push", ejercicios: ["Press banca plano 3×8", "Press mancuernas inclinado 3×8", "Press militar sentado 3×8", "Elevaciones laterales 3×12", "Tricep pushdown 3×12"], nota: "Última semana de carga normal antes del tapering." },
+    martes: { tipo: "🏃 Carrera — Rodaje", ejercicios: ["5 min caminata → 5.5 km/h", "50 min trote continuo → 9.5 km/h", "5 min caminata → 5.5 km/h"], nota: "Bajamos 10 min respecto semana 10. Empieza la transición al tapering. Misma velocidad, menos tiempo.", cardioDetail: { tipo: "Rodaje", duracion: "50 min continuos", velocidad: "9.5 km/h", inclinacion: "1.0%" } },
+    miercoles: { tipo: "💪 Pull + Core", ejercicios: ["Jalón al pecho 3×8", "Remo en polea 3×8", "Curl mancuernas 3×10", "Face pulls 3×15", "Plank 3×50s", "Bird-dog 3×10/lado"], nota: "Ligeramente menos volumen de core. Transición suave." },
+    jueves: { tipo: "🏃 Carrera — Tempo Run", ejercicios: ["5 min caminata → 5.5 km/h", "3 min trote suave → 8.5 km/h", "20 min tempo → 10.0 km/h", "3 min trote suave → 8.5 km/h", "5 min caminata → 5.5 km/h"], nota: "Último tempo fuerte. 5 min menos que semanas 9–10, misma velocidad. Confía en el proceso.", cardioDetail: { tipo: "Tempo Run", duracion: "20 min continuos", velocidad: "10.0 km/h", calentamiento: "8.5 km/h × 3 min", inclinacion: "1.0%" } },
+    viernes: { tipo: "💪 Legs", ejercicios: ["Prensa de pierna 3×10", "Curl femoral 3×12", "Hip thrust 3×10", "Gemelos 3×15"], nota: "Simplificado. Empezamos a bajar el volumen." }
+  },
+  12: {
+    lunes: { tipo: "💪 Push — Tapering ⚡", ejercicios: ["Press banca plano 2×8 (misma carga)", "Press militar sentado 2×10", "Elevaciones laterales 2×12", "Tricep pushdown 2×12"], nota: "⚡ TAPERING. Misma carga, mitad de series. El músculo se mantiene. Llegar fresco el domingo es el objetivo." },
+    martes: { tipo: "🏃 Carrera — Activación", ejercicios: ["5 min caminata → 5.5 km/h", "20 min trote suave → 8.5 km/h", "5 min caminata → 5.5 km/h"], nota: "Carrera corta de activación. Solo para mantener las piernas despiertas. Sin esfuerzo real.", cardioDetail: { tipo: "Activación", duracion: "20 min", velocidad: "8.5 km/h", inclinacion: "1.0%" } },
+    miercoles: { tipo: "💪 Pull — Tapering ⚡", ejercicios: ["Jalón al pecho 2×8", "Remo en polea 2×8", "Face pulls 2×15", "Plank 2×45s"], nota: "Sesión corta. 30 minutos máximo. Estás en modo conservación." },
+    jueves: { tipo: "🏃 Carrera — Última antes del 10K", ejercicios: ["5 min caminata → 5.5 km/h", "15 min trote suave → 8.5 km/h", "3 × [30s a 10.0 km/h + 60s a 7.0 km/h] (activación)", "5 min caminata → 5.5 km/h"], nota: "Última carrera antes del 10K. Los 3 mini-intervalos solo activan las piernas, no cansan. Duerme mucho esta noche.", cardioDetail: { tipo: "Activación pre-carrera", duracion: "15 min + 3 mini-intervalos", velocidad: "8.5 km/h / 10.0 km/h × 30s", inclinacion: "1.0%" } },
+    viernes: { tipo: "🧘 Descanso Pre-Carrera", ejercicios: ["Caminata ligera 20–30 min", "Estiramiento suave de piernas", "Prepara ropa y agua para mañana", "Come más carbohidratos hoy (arroz, pasta, tortillas extra)", "Duerme mínimo 8 horas"], nota: "🏁 MAÑANA ES EL 10K. Todo el trabajo ya está hecho. Solo descansa, come bien y confía en el proceso." }
+  }
+};
+
+const WEEK_START_DATE = new Date(2026, 3, 13); // Month is 0-indexed: 3 = April
+
+function getWeekDates(w) {
+  const s = new Date(WEEK_START_DATE); s.setDate(s.getDate() + (w-1)*7);
+  const e = new Date(s); e.setDate(e.getDate()+6);
+  const f = d => d.toLocaleDateString("es-MX", {day:"numeric",month:"short"});
+  return `${f(s)} – ${f(e)}`;
+}
+function getPhase(w) { return PHASES.find(p => p.weeks.includes(w)); }
+
+const DAY_KEYS = ["lunes","martes","miercoles","jueves","viernes"];
+const DAY_LABELS = {lunes:"Lun",martes:"Mar",miercoles:"Mié",jueves:"Jue",viernes:"Vie"};
+
+function load() { try { const r=localStorage.getItem("fp3"); return r?JSON.parse(r):{}; } catch{return{};} }
+function save(d) { try{localStorage.setItem("fp3",JSON.stringify(d));}catch{} }
+
+function CardioCard({detail}) {
+  if(!detail) return null;
+  const isTempo = detail.tipo.includes("Tempo");
+  const isInterval = detail.tipo.includes("Interval");
+  const color = isTempo ? "#F7B731" : isInterval ? "#FC5C65" : "#4ECDC4";
+  const fields = [
+    detail.velocidad && ["VELOCIDAD", detail.velocidad, color],
+    detail.velocidadRapido && ["RÁPIDO", detail.velocidadRapido, "#FC5C65"],
+    detail.velocidadRecup && ["RECUPERACIÓN", detail.velocidadRecup, "#4ECDC4"],
+    detail.duracion && ["DURACIÓN", detail.duracion, "#fff"],
+    detail.series && ["SERIES", detail.series, "#fff"],
+    detail.tiempoRapido && ["T. RÁPIDO", detail.tiempoRapido, "#FC5C65"],
+    detail.tiempoRecup && ["T. RECUP.", detail.tiempoRecup, "#4ECDC4"],
+    detail.calentamiento && ["CALENTAMIENTO", detail.calentamiento, "#aaa"],
+    ["INCLINACIÓN", detail.inclinacion, "#fff"],
+  ].filter(Boolean);
+  return (
+    <div style={{marginTop:12,padding:"12px 14px",background:`${color}12`,border:`1px solid ${color}30`,borderRadius:12}}>
+      <div style={{fontSize:10,fontWeight:800,color,letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>⚡ Config Cinta — {detail.tipo}</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
+        {fields.map(([label,val,c],i)=>(
+          <div key={i} style={{background:"rgba(255,255,255,0.05)",borderRadius:8,padding:"7px 9px"}}>
+            <div style={{fontSize:8,color:"#777",marginBottom:2}}>{label}</div>
+            <div style={{fontSize:label==="CALENTAMIENTO"?11:14,fontWeight:700,color:c,lineHeight:1.2}}>{val}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GymLog({weekNum,dayKey,data,onChange}) {
+  const plan = WEEK_PLANS[weekNum]?.[dayKey];
+  const key = `w${weekNum}_${dayKey}`;
+  const entry = data[key]||{};
+  if(!plan) return null;
+  const isCardio = plan.tipo.includes("🏃");
+  const isRest = plan.tipo.includes("🧘");
+  if(isRest) return <div style={{padding:20,textAlign:"center",color:"#555",fontSize:13}}>🧘 Día de descanso — descansa de verdad</div>;
+  return (
+    <div>
+      {plan.ejercicios.map((ej,i)=>{
+        const done=entry[`done_${i}`]||false, kg=entry[`kg_${i}`]||"", sets=entry[`sets_${i}`]||"";
+        return(
+          <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.05)",opacity:done?0.4:1}}>
+            <input type="checkbox" checked={done} onChange={e=>onChange(key,{...entry,[`done_${i}`]:e.target.checked})} style={{accentColor:"#4ECDC4",width:16,height:16,flexShrink:0}}/>
+            <div style={{flex:1,fontSize:12,color:done?"#555":"#ddd",lineHeight:1.4}}>{ej}</div>
+            {!isCardio&&<>
+              <input type="number" placeholder="kg" value={kg} onChange={e=>onChange(key,{...entry,[`kg_${i}`]:e.target.value})} style={{width:42,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,color:"#fff",fontSize:11,padding:"3px 4px",textAlign:"center",outline:"none"}}/>
+              <input type="text" placeholder="sets" value={sets} onChange={e=>onChange(key,{...entry,[`sets_${i}`]:e.target.value})} style={{width:42,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,color:"#fff",fontSize:11,padding:"3px 4px",textAlign:"center",outline:"none"}}/>
+            </>}
+          </div>
+        );
+      })}
+      <div style={{marginTop:10,padding:"8px 10px",background:"rgba(78,205,196,0.07)",borderRadius:8,border:"1px solid rgba(78,205,196,0.12)"}}>
+        <div style={{fontSize:9,fontWeight:700,color:"#4ECDC4",marginBottom:4,letterSpacing:1}}>💡 NOTA</div>
+        <div style={{fontSize:11,color:"#aaa",lineHeight:1.6}}>{plan.nota}</div>
+      </div>
+      {plan.cardioDetail && <CardioCard detail={plan.cardioDetail}/>}
+      <textarea placeholder="Tus notas..." value={entry.notas||""} onChange={e=>onChange(key,{...entry,notas:e.target.value})} rows={2}
+        style={{marginTop:10,width:"100%",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,color:"#ccc",fontSize:11,padding:"8px 10px",resize:"none",outline:"none",boxSizing:"border-box",fontFamily:"inherit"}}/>
+    </div>
+  );
+}
+
+function WeightEntry({weekNum,data,onChange}) {
+  const days=["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+  const start=new Date(WEEK_START_DATE); start.setDate(start.getDate()+(weekNum-1)*7);
+  return(
+    <div>
+      <div style={{fontSize:10,fontWeight:700,letterSpacing:2,color:"#555",marginBottom:10,textTransform:"uppercase"}}>📊 Peso Diario (ayunas · post-baño)</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:5}}>
+        {days.map((day,i)=>{
+          const date=new Date(start); date.setDate(date.getDate()+i);
+          const key=date.toISOString().split("T")[0];
+          const entry=data[key]||{};
+          return(
+            <div key={key} style={{background:"rgba(255,255,255,0.04)",borderRadius:10,padding:"7px 4px",border:"1px solid rgba(255,255,255,0.07)"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#aaa",textAlign:"center",marginBottom:5}}>{day}<br/><span style={{fontWeight:400,fontSize:9}}>{date.getDate()}/{date.getMonth()+1}</span></div>
+              {[["kg","kg"],["gras","% G"],["musc","% M"]].map(([field,label])=>(
+                <div key={field} style={{marginBottom:4}}>
+                  <div style={{fontSize:8,color:"#555",marginBottom:1,textAlign:"center"}}>{label}</div>
+                  <input type="number" step="0.1" placeholder="—" value={entry[field]||""} onChange={e=>onChange(key,{...entry,[field]:e.target.value})}
+                    style={{width:"100%",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,color:"#fff",fontSize:11,padding:"3px 2px",textAlign:"center",outline:"none",boxSizing:"border-box"}}/>
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [tab,setTab]=useState("plan");
+  const [week,setWeek]=useState(1);
+  const [day,setDay]=useState("lunes");
+  const [gymData,setGymData]=useState({});
+  const [weightData,setWeightData]=useState({});
+  const [showLegend,setShowLegend]=useState(false);
+
+  useEffect(()=>{ const s=load(); setGymData(s.gym||{}); setWeightData(s.weight||{}); },[]);
+
+  const updGym=(k,v)=>{ const u={...gymData,[k]:v}; setGymData(u); save({gym:u,weight:weightData}); };
+  const updWeight=(k,v)=>{ const u={...weightData,[k]:v}; setWeightData(u); save({gym:gymData,weight:u}); };
+
+  const phase=getPhase(week);
+  const dayPlan=WEEK_PLANS[week]?.[day];
+
+  return(
+    <div style={{minHeight:"100vh",background:"#0e0e12",color:"#fff",fontFamily:"'DM Sans','Segoe UI',sans-serif",paddingBottom:40}}>
+      {/* HEADER */}
+      <div style={{background:"linear-gradient(135deg,#0e0e12 0%,#1a1a24 100%)",borderBottom:"1px solid rgba(255,255,255,0.06)",padding:"20px 20px 0"}}>
+        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:16}}>
+          <div>
+            <div style={{fontSize:11,letterSpacing:3,color:"#444",fontWeight:700,textTransform:"uppercase",marginBottom:4}}>Plan 12 Semanas</div>
+            <div style={{fontSize:22,fontWeight:800,letterSpacing:-0.5}}>Fuerza + 10K 🏁</div>
+            <div style={{fontSize:12,color:"#555",marginTop:2}}>13 Abr → 5 Jul 2026 · Meta: sub-60 min</div>
+          </div>
+          <div style={{background:"rgba(252,92,101,0.15)",border:"1px solid rgba(252,92,101,0.3)",borderRadius:12,padding:"8px 12px",textAlign:"center"}}>
+            <div style={{fontSize:10,color:"#FC5C65",fontWeight:700}}>META</div>
+            <div style={{fontSize:13,fontWeight:800,color:"#FC5C65"}}>Jul 5</div>
+            <div style={{fontSize:10,color:"#FC5C65"}}>10K 🏃</div>
+          </div>
+        </div>
+        <div style={{display:"flex"}}>
+          {[["plan","📅 Plan"],["tracker","📊 Tracker"]].map(([id,label])=>(
+            <button key={id} onClick={()=>setTab(id)} style={{flex:1,padding:"10px 0",border:"none",background:"transparent",color:tab===id?"#fff":"#555",fontSize:13,fontWeight:tab===id?700:500,borderBottom:tab===id?"2px solid #4ECDC4":"2px solid transparent",cursor:"pointer"}}>{label}</button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{padding:"16px 16px 0"}}>
+        {/* LEGEND */}
+        <button onClick={()=>setShowLegend(!showLegend)} style={{width:"100%",marginBottom:12,padding:"9px 14px",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,color:"#aaa",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <span>🏃 Guía de velocidades en cinta</span>
+          <span style={{fontSize:10}}>{showLegend?"▲ cerrar":"▼ ver"}</span>
+        </button>
+        {showLegend&&(
+          <div style={{marginBottom:14,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:14}}>
+            {SPEED_LEGEND.map((s,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0",borderBottom:i<SPEED_LEGEND.length-1?"1px solid rgba(255,255,255,0.05)":"none"}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:s.color,flexShrink:0}}/>
+                <div style={{flex:1}}><div style={{fontSize:12,fontWeight:700,color:s.color}}>{s.label}</div><div style={{fontSize:11,color:"#555"}}>{s.desc}</div></div>
+                <div style={{fontSize:14,fontWeight:800,color:s.color}}>{s.speed}</div>
+              </div>
+            ))}
+            <div style={{marginTop:10,padding:"8px 10px",background:"rgba(255,255,255,0.03)",borderRadius:8,fontSize:10,color:"#555"}}>
+              💡 Siempre usa inclinación 1.0% para simular el exterior. Excepción: semana 7 (deload) → 0%.
+            </div>
+          </div>
+        )}
+
+        {/* WEEK SELECTOR */}
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:10,fontWeight:700,color:"#444",letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Semana</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {Array.from({length:12},(_,i)=>i+1).map(w=>{
+              const ph=getPhase(w); const isSel=w===week;
+              return <button key={w} onClick={()=>setWeek(w)} style={{width:36,height:36,borderRadius:10,border:"none",background:isSel?ph.color:"rgba(255,255,255,0.06)",color:isSel?"#000":"#666",fontWeight:isSel?800:500,fontSize:13,cursor:"pointer",transition:"all 0.2s",boxShadow:isSel?`0 0 12px ${ph.color}55`:"none"}}>{w}</button>;
+            })}
+          </div>
+          <div style={{marginTop:10,padding:"8px 12px",background:`${phase.color}15`,border:`1px solid ${phase.color}30`,borderRadius:10,display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:8,height:8,borderRadius:"50%",background:phase.color,flexShrink:0}}/>
+            <div>
+              <span style={{fontSize:12,fontWeight:700,color:phase.color}}>Fase {phase.id}: {phase.name}</span>
+              <div style={{fontSize:11,color:"#555",marginTop:1}}>{getWeekDates(week)} · {phase.desc}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* DAY SELECTOR */}
+        <div style={{display:"flex",gap:6,marginBottom:14}}>
+          {DAY_KEYS.map(dk=>{
+            const dp=WEEK_PLANS[week]?.[dk]; const isSel=dk===day;
+            const isCardio=dp?.tipo?.includes("🏃"); const isRest=dp?.tipo?.includes("🧘");
+            const accent=isRest?"#A29BFE":isCardio?"#F7B731":"#4ECDC4";
+            const hasData=tab==="tracker"&&Object.keys(gymData[`w${week}_${dk}`]||{}).length>0;
+            return(
+              <button key={dk} onClick={()=>setDay(dk)} style={{flex:1,padding:"8px 4px",borderRadius:10,border:"none",background:isSel?`${accent}20`:"rgba(255,255,255,0.04)",color:isSel?accent:"#555",fontSize:11,fontWeight:isSel?700:500,cursor:"pointer",borderBottom:isSel?`2px solid ${accent}`:"2px solid transparent",position:"relative"}}>
+                {DAY_LABELS[dk]}
+                {hasData&&<span style={{position:"absolute",top:3,right:6,width:5,height:5,borderRadius:"50%",background:accent}}/>}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* PLAN TAB */}
+        {tab==="plan"&&dayPlan&&(
+          <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:16,padding:16}}>
+            <div style={{fontSize:15,fontWeight:800,marginBottom:12}}>{dayPlan.tipo}</div>
+            <div style={{display:"flex",flexDirection:"column",gap:5}}>
+              {dayPlan.ejercicios.map((ej,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"8px 10px",background:"rgba(255,255,255,0.03)",borderRadius:8,fontSize:12,color:"#ccc"}}>
+                  <span style={{color:"#4ECDC4",fontWeight:700,flexShrink:0}}>{i+1}.</span>{ej}
+                </div>
+              ))}
+            </div>
+            <div style={{marginTop:12,padding:"10px 12px",background:"rgba(78,205,196,0.07)",borderRadius:10,border:"1px solid rgba(78,205,196,0.12)"}}>
+              <div style={{fontSize:9,fontWeight:700,color:"#4ECDC4",letterSpacing:1,marginBottom:4}}>💡 NOTA</div>
+              <div style={{fontSize:12,color:"#aaa",lineHeight:1.6}}>{dayPlan.nota}</div>
+            </div>
+            {dayPlan.cardioDetail&&<CardioCard detail={dayPlan.cardioDetail}/>}
+            <div style={{marginTop:10,padding:"8px 12px",background:"rgba(252,92,101,0.07)",borderRadius:10,border:"1px solid rgba(252,92,101,0.12)",fontSize:10,color:"#FC5C65",lineHeight:1.5}}>
+              ⚠️ Core activado siempre · Columna neutral · Sin redondear lumbar
+            </div>
+          </div>
+        )}
+
+        {/* TRACKER TAB */}
+        {tab==="tracker"&&(
+          <div>
+            <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:16,padding:16,marginBottom:14}}>
+              {dayPlan&&<div style={{fontSize:14,fontWeight:700,marginBottom:12}}>{dayPlan.tipo}</div>}
+              <GymLog weekNum={week} dayKey={day} data={gymData} onChange={updGym}/>
+            </div>
+            <div style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:16,padding:16}}>
+              <WeightEntry weekNum={week} data={weightData} onChange={updWeight}/>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>
